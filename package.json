@@ -1,6 +1,6 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "rayshark",
+  "name": "six-seven",
   "title": "Rayshark",
   "description": "A Raycast extension to run Tshark, the command-line version of Wireshark, with a GUI.",
   "icon": "extension-icon.png",

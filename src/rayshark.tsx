@@ -1,7 +1,8 @@
 import { Detail, Cache, showToast, Toast, Action, ActionPanel, Form, useNavigation } from "@raycast/api";
 import { useForm, FormValidation } from "@raycast/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { exec } from "child_process";
+import { setTimeout } from "timers/promises";
 
 const cache = new Cache();
 
@@ -16,13 +17,8 @@ function Init() {
         validation: {
             tsharkPath: FormValidation.Required,
         },
-        onSubmit: (values) => {
+        onSubmit: async(values) => {
             cache.set("tsharkPath", values.tsharkPath);
-            showToast({
-                style: Toast.Style.Success,
-                title: "Tshark Path Set",
-                message: `Tshark path set to: ${values.tsharkPath}`,
-            });
             push(<Home />);
         },
     });
@@ -56,34 +52,47 @@ function Init() {
 }
 
 function Home() {
+    const { push } = useNavigation();
+
     const [output, setOutput] = useState("");
     const [tsharkPath, setTsharkPath] = useState("");
 
-    const checkTshark = async () => {
-        setTsharkPath(cache.get("tsharkPath") || "");
-        const toast = await showToast({
-            title: "Checking tshark...",
-            message: "Please wait.",
-            style: Toast.Style.Animated,
-        });
+    useEffect(() => {
+        const checkTshark = async () => {
+            const cachedPath = cache.get("tsharkPath") || "";
+            setTsharkPath(cachedPath);
+            
+            const toast = await showToast({
+                title: "Checking tshark...",
+                message: "Please wait.",
+                style: Toast.Style.Animated,
+            });
 
-        exec(`${tsharkPath} -v`, async (error, stdout, stderr) => {
-            if (stdout) {
-                setOutput(stdout);
-                toast.style = Toast.Style.Success;
-                toast.title = "Tshark Found";
-                toast.message = "Tshark is installed and working";
-            } else {
-                const errorMessage = error ? error.message : stderr;
-                setOutput(errorMessage);
-                toast.style = Toast.Style.Failure;
-                toast.title = "Error";
-                toast.message = `Error: ${errorMessage}`;
-            }
-        });
-    };
+            exec(`${cachedPath} -v`, async (error, stdout, stderr) => {
+                if (stdout) {
+                    setOutput(stdout);
+                    toast.style = Toast.Style.Success;
+                    toast.title = "Tshark Found";
+                    toast.message = "Tshark is installed and working";
+                } else {
+                    const errorMessage = error ? error.message : stderr;
+                    setOutput(errorMessage);
+                    toast.style = Toast.Style.Failure;
+                    toast.title = "Error, you may need to reset the path";
+                    toast.message = errorMessage;
+                    toast.primaryAction = {
+                        title: "Set Path",
+                        onAction: () => {
+                            push(<Init />);
+                        }
+                    };
+                }
+            });
+        };
 
-    checkTshark();
+        checkTshark();
+    }, []);
+
     return <Detail markdown={`# Rayshark (tshark for raycast)\n\n## Output:\n${output}`} />;
 }
 
