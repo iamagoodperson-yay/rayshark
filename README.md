@@ -16,7 +16,7 @@ cd rayshark
 ```
 Then, run the extension by running
 ```bash
-npm run dev
+npm install && npm run dev
 ```
 
 Rayshark requires Tshark to be installed on your system.
