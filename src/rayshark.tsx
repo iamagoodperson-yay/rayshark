@@ -1,12 +1,12 @@
-import { Detail, Cache, showToast, Toast, Action, ActionPanel, Form, useNavigation } from "@raycast/api";
+import { Detail, Cache, showToast, Toast, Action, ActionPanel, Form, Icon, useNavigation } from "@raycast/api";
 import { useForm, FormValidation } from "@raycast/utils";
 import { useState, useEffect } from "react";
 import { exec } from "child_process";
-import { setTimeout } from "timers/promises";
+import { read, readFile } from "fs";
 
 const cache = new Cache();
 
-interface initFormValues {
+type initFormValues = {
     tsharkPath: string;
 }
 
@@ -19,17 +19,17 @@ function Init() {
         },
         onSubmit: async(values) => {
             cache.set("tsharkPath", values.tsharkPath);
-            push(<Home />);
+            push(<Index />);
         },
     });
 
     return (
         <Form
-                searchBarAccessory={
-                    <Form.LinkAccessory
-                        target="https://tshark.dev/setup/install/#install-wireshark-with-a-package-manager"
-                        text="Tshark Installation Guide"
-                    />
+            searchBarAccessory={
+                <Form.LinkAccessory
+                    target="https://tshark.dev/setup/install/#install-wireshark-with-a-package-manager"
+                    text="Tshark Installation Guide"
+                />
             }
             actions={
                 <ActionPanel>
@@ -51,16 +51,91 @@ function Init() {
     );
 }
 
-function Home() {
+type Option = {
+    value: string;
+    icon: Icon;
+}
+
+const mainOptions: Record<string, Option> = {
+    "Capture Interface": { value: "-i", icon: Icon.Network },
+    "Read file": { value: "-r", icon: Icon.Receipt },
+};
+
+const recordOptions: Record<string, Option> = {
+    "Capture Filter": { value: "-f", icon: Icon.Filter },
+    "Write to file": { value: "-w", icon: Icon.SaveDocument },
+    "Capture Count": { value: "-c", icon: Icon.ReplaceOne },
+};
+
+const captureFilterOptions = {
+    "HTTP": { value: "http", icon: Icon.Circle },
+    "DNS": { value: "dns", icon: Icon.Circle },
+    "TCP": { value: "tcp", icon: Icon.Circle },
+    "Traffic to/from port": { value: "host", icon: Icon.Repeat },
+};
+
+const readOptions: Record<string, Option> = {
+    "Two Pass": { value: "-2", icon: Icon.Repeat },
+    "Display Filter": { value: "-Y", icon: Icon.Filter },
+    "Display as fields": { value: "-T fields", icon: Icon.CheckList },
+    "Display as JSON": { value: "-T json", icon: Icon.ShortParagraph },
+};
+
+function Index() {
     const { push } = useNavigation();
 
-    const [output, setOutput] = useState("");
-    const [tsharkPath, setTsharkPath] = useState("");
+    const [mode, setMode] = useState<string>("");
+    const [options, setOptions] = useState<string[]>([]);
+    const [output, setOutput] = useState<string>("");
+    const [file, setFile] = useState<string[]>([]);
+    const [captureFilterHost, setCaptureFilterHost] = useState<string>("");
+
+    const [optionAndValues, setOptionAndValues] = useState<Record<string, string[]>>({});
+
+    useEffect(() => {
+        setOptionAndValues(
+            Object.fromEntries(
+                Object.values(mode === "-r" ? readOptions : recordOptions)
+                    .filter((item) => options.includes(item.value))
+                    .map((item) => [item.value, []])
+            )
+        );
+    }, [options, mode]);
+
+    const [command, setCommand] = useState<string>("");
+
+    useEffect(() => {
+        const mainOption = mode === "-i" ? mode : `${mode} ${file.join()}`;
+        var subOptions = "";
+        for (const [key, value] of Object.entries(optionAndValues)) {
+            if (value.length === 0) {
+                subOptions += key;
+            } else {
+                if (key === "-f") {
+                    subOptions += `${key} "${value.filter((item) => item !== "host").join(" ")} ${value.filter((item) => item === "host").join()} ${captureFilterHost}"`;
+                } else {
+                    subOptions += `${key} ${value.join(" ")}`;
+                }
+            }
+        }
+        setCommand(`${mainOption} ${subOptions}`);
+    }, [mode, file, optionAndValues, captureFilterHost]);
+
+    const modeItems = Object.entries(mainOptions).map(([key, item]) => (
+        <Form.Dropdown.Item key={key} value={item.value} title={key} icon={item.icon} />
+    ));
+
+    const optionItems = Object.entries(mode === "-r" ? readOptions : recordOptions).map(([key, item]) => (
+        <Form.TagPicker.Item key={key} value={item.value} title={key} icon={item.icon} />
+    ));
+
+    const captureFilterItems = Object.entries(captureFilterOptions).map(([key, item]) => (
+        <Form.TagPicker.Item key={key} value={item.value} title={key} icon={item.icon} />
+    ));
 
     useEffect(() => {
         const checkTshark = async () => {
-            const cachedPath = cache.get("tsharkPath") || "";
-            setTsharkPath(cachedPath);
+            const cachedPath = cache.get("tsharkPath") || "tshark";
             
             const toast = await showToast({
                 title: "Checking tshark...",
@@ -72,8 +147,8 @@ function Home() {
                 if (stdout) {
                     setOutput(stdout);
                     toast.style = Toast.Style.Success;
-                    toast.title = "Tshark Found";
-                    toast.message = "Tshark is installed and working";
+                    toast.title = "Tshark is installed and working";
+                    toast.message = stdout.split("\n")[0];
                 } else {
                     const errorMessage = error ? error.message : stderr;
                     setOutput(errorMessage);
@@ -93,12 +168,142 @@ function Home() {
         checkTshark();
     }, []);
 
-    return <Detail markdown={`# Rayshark (tshark for raycast)\n\n## Output:\n${output}`} />;
+    return (
+        <Form
+            actions={
+                <ActionPanel>
+                    <Action title="Run Command" onAction={() => {
+                        push(<Output options={command} />);
+                    }} />
+                </ActionPanel>
+            }
+        >
+            <Form.Description
+                title="Rayshark"
+                text="Run command"
+            />
+
+            <Form.Dropdown
+                id="dropdown"
+                title="Mode"
+                value={mode}
+                onChange={(newMode) => {
+                    setMode(newMode);
+                    setOptions([]); // Clear options when mode changes
+                    setFile([]);
+                }}
+            >
+                {modeItems}
+            </Form.Dropdown>
+
+            {mode === "-r" && (
+                <Form.FilePicker
+                    id="file-picker"
+                    title="Capture file"
+                    value={file}
+                    onChange={setFile}
+                    allowMultipleSelection={false}
+                />
+            )}
+
+            <Form.TagPicker
+                id="tag-picker"
+                title="Options"
+                value={options}
+                onChange={setOptions}
+            >
+                {optionItems}
+            </Form.TagPicker>
+
+            {mode === "-i" && options.includes("-w") && (
+                <Form.FilePicker
+                    id="file-picker"
+                    title="Save Capture Location"
+                    value={optionAndValues["-w"]}
+                    onChange={(newValue) => setOptionAndValues((prev) => ({ ...prev, ["-w"]: newValue }))}
+                    allowMultipleSelection={false}
+                    canChooseDirectories
+                    canChooseFiles={false}
+                />
+            )}
+
+            {mode === "-i" && options.includes("-f") && (
+                    <Form.TagPicker
+                        id="capture-filter-picker"
+                        title="Capture Filter Type"
+                        value={optionAndValues["-f"]}
+                        onChange={(newValue) => setOptionAndValues((prev) => ({ ...prev, ["-f"]: newValue }))}
+                    >
+                        {captureFilterItems}
+                    </Form.TagPicker>
+            )}
+
+            {mode === "-i" && optionAndValues["-f"] && optionAndValues["-f"].includes("host") && (
+                <Form.TextField
+                    id="capture-filter-value"
+                    title="Capture Filter Value"
+                    placeholder="Enter custom filter or value"
+                    value={captureFilterHost}
+                    onChange={setCaptureFilterHost}
+                />
+            )}
+
+            <Form.Description
+                title="Command"
+                text={`tshark ${command}`}
+            />
+
+            <Form.Description
+                title="Bugfixing"
+                text={`${Object.entries(optionAndValues)}`}
+            />
+        </Form>
+    );
+}
+
+function Output(options: string) {
+    const [output, setOutput] = useState<string | null>(null);
+
+    useEffect(() => {
+        const runCommand = async (options: string) => {
+            const cachedPath = cache.get("tsharkPath") || "tshark";
+            const command = `${cachedPath} ${options}`;
+
+            const toast = await showToast({
+                title: "Running Command...",
+                message: command,
+                style: Toast.Style.Animated,
+            });
+
+            exec(`${cachedPath} ${command}`, (error, stdout, stderr) => {
+                if (stdout) {
+                    setOutput(stdout);
+                    toast.style = Toast.Style.Success;
+                    toast.title = "Command Completed";
+                    toast.message = stdout;
+                } else {
+                    const errorMessage = error ? error.message : stderr;
+                    setOutput(errorMessage);
+                    toast.style = Toast.Style.Failure;
+                    toast.title = "Error";
+                    toast.message = errorMessage;
+                }
+            });
+        };
+
+        runCommand(options);
+    }, []);
+
+    return(
+        <Detail
+            markdown={output}
+        />
+    );
 }
 
 export default function Command() {
     if (cache.has("tsharkPath")) {
-        return <Home />;
+        return <Index />;
     } else {
         return <Init />;
     }
