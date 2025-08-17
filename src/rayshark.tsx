@@ -105,7 +105,7 @@ function Index() {
     const [command, setCommand] = useState<string>("");
 
     useEffect(() => {
-        const mainOption = mode === "-i" ? mode : `${mode} ${file.join()}`;
+        const mainOption = mode === "-i" ? mode : `${mode} "${file.join()}"`;
         var subOptions = "";
         for (const [key, value] of Object.entries(optionAndValues)) {
             if (value.length === 0) {
@@ -173,7 +173,7 @@ function Index() {
             actions={
                 <ActionPanel>
                     <Action title="Run Command" onAction={() => {
-                        push(<Output options={command} />);
+                        push(<Output options={`${command}`} />);
                     }} />
                 </ActionPanel>
             }
@@ -252,16 +252,11 @@ function Index() {
                 title="Command"
                 text={`tshark ${command}`}
             />
-
-            <Form.Description
-                title="Bugfixing"
-                text={`${Object.entries(optionAndValues)}`}
-            />
         </Form>
     );
 }
 
-function Output(options: string) {
+function Output(input: {options: string}) {
     const [output, setOutput] = useState<string | null>(null);
 
     useEffect(() => {
@@ -275,28 +270,26 @@ function Output(options: string) {
                 style: Toast.Style.Animated,
             });
 
-            exec(`${cachedPath} ${command}`, (error, stdout, stderr) => {
+            exec(command, (error, stdout, stderr) => {
                 if (stdout) {
-                    setOutput(stdout);
+                    setOutput(stdout.split('\n').map(line => line.trim()).join('  \n\n'));
                     toast.style = Toast.Style.Success;
                     toast.title = "Command Completed";
-                    toast.message = stdout;
                 } else {
                     const errorMessage = error ? error.message : stderr;
                     setOutput(errorMessage);
                     toast.style = Toast.Style.Failure;
                     toast.title = "Error";
-                    toast.message = errorMessage;
                 }
             });
         };
 
-        runCommand(options);
+        runCommand(input.options);
     }, []);
 
     return(
         <Detail
-            markdown={output}
+            markdown={output ? output : "Loading..."}
         />
     );
 }

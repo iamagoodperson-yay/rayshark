@@ -4,7 +4,7 @@
   "title": "Rayshark",
   "description": "A Raycast extension to run Tshark, the command-line version of Wireshark, with a GUI.",
   "icon": "extension-icon.png",
-  "author": "kenzie_irawan",
+  "author": "kenzie",
   "license": "MIT",
   "commands": [
     {
