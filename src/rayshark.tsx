@@ -57,7 +57,7 @@ type Option = {
 }
 
 const mainOptions: Record<string, Option> = {
-    "Capture Interface": { value: "-i", icon: Icon.Network },
+    "Capture Interface": { value: "", icon: Icon.Network },
     "Read file": { value: "-r", icon: Icon.Receipt },
 };
 
@@ -76,9 +76,6 @@ const captureFilterOptions = {
 
 const readOptions: Record<string, Option> = {
     "Two Pass": { value: "-2", icon: Icon.Repeat },
-    "Display Filter": { value: "-Y", icon: Icon.Filter },
-    "Display as fields": { value: "-T fields", icon: Icon.CheckList },
-    "Display as JSON": { value: "-T json", icon: Icon.ShortParagraph },
 };
 
 function Index() {
@@ -105,7 +102,7 @@ function Index() {
     const [command, setCommand] = useState<string>("");
 
     useEffect(() => {
-        const mainOption = mode === "-i" ? mode : `${mode} "${file.join()}"`;
+        const mainOption = mode !== "-r" ? "" : `${mode} "${file.join()}"`;
         var subOptions = "";
         for (const [key, value] of Object.entries(optionAndValues)) {
             if (value.length === 0) {
@@ -215,7 +212,28 @@ function Index() {
                 {optionItems}
             </Form.TagPicker>
 
-            {mode === "-i" && options.includes("-w") && (
+            {mode !== "-r" && options.includes("-f") && (
+                    <Form.TagPicker
+                        id="capture-filter-picker"
+                        title="Capture Filter Type"
+                        value={optionAndValues["-f"]}
+                        onChange={(newValue) => setOptionAndValues((prev) => ({ ...prev, ["-f"]: newValue }))}
+                    >
+                        {captureFilterItems}
+                    </Form.TagPicker>
+            )}
+
+            {mode !== "-r" && optionAndValues["-f"] && optionAndValues["-f"].includes("host") && (
+                <Form.TextField
+                    id="capture-filter-value"
+                    title="Capture Filter Value"
+                    placeholder="Enter custom filter or value"
+                    value={captureFilterHost}
+                    onChange={setCaptureFilterHost}
+                />
+            )}
+
+            {mode !== "-r" && options.includes("-w") && (
                 <Form.FilePicker
                     id="file-picker"
                     title="Save Capture Location"
@@ -227,24 +245,13 @@ function Index() {
                 />
             )}
 
-            {mode === "-i" && options.includes("-f") && (
-                    <Form.TagPicker
-                        id="capture-filter-picker"
-                        title="Capture Filter Type"
-                        value={optionAndValues["-f"]}
-                        onChange={(newValue) => setOptionAndValues((prev) => ({ ...prev, ["-f"]: newValue }))}
-                    >
-                        {captureFilterItems}
-                    </Form.TagPicker>
-            )}
-
-            {mode === "-i" && optionAndValues["-f"] && optionAndValues["-f"].includes("host") && (
+            {mode !== "-r" && options.includes("-c") && (
                 <Form.TextField
-                    id="capture-filter-value"
-                    title="Capture Filter Value"
-                    placeholder="Enter custom filter or value"
-                    value={captureFilterHost}
-                    onChange={setCaptureFilterHost}
+                    id="capture-count"
+                    title="Capture Count"
+                    placeholder="Enter capture count"
+                    value={optionAndValues["-c"]?.[0]}
+                    onChange={(newValue) => setOptionAndValues((prev) => ({ ...prev, ["-c"]: [newValue] }))}
                 />
             )}
 
