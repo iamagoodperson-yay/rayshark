@@ -1,9 +1,23 @@
-# Rayshark
+# Rayshark  
 
-Tshark on raycast
+Tshark on raycast  
 
+## Setup instructions  
+Prerequisites:  
+- Raycast  
+- npm  
+- tshark  
 
-## Setup instructions
+Download this repo
+Set this repo as your active directory in your terminal by using  
+```bash
+cd rayshark
+```
+Then, run the extension by running
+```bash
+npm run dev
+```
+
 Rayshark requires Tshark to be installed on your system.
 During startup, you will be asked to set the Path to tshark.
 You can find the Path to tshark by running 'which tshark' in your terminal.
