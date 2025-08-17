@@ -106,12 +106,12 @@ function Index() {
         var subOptions = "";
         for (const [key, value] of Object.entries(optionAndValues)) {
             if (value.length === 0) {
-                subOptions += key;
+                subOptions += `${key} `;
             } else {
                 if (key === "-f") {
-                    subOptions += `${key} "${value.filter((item) => item !== "host").join(" ")} ${value.filter((item) => item === "host").join()} ${captureFilterHost}"`;
+                    subOptions += `${key} "${value.filter((item) => item !== "host").join(" ")} ${value.filter((item) => item === "host").join()} ${captureFilterHost}" `;
                 } else {
-                    subOptions += `${key} ${value.join(" ")}`;
+                    subOptions += `${key} ${value.join(" ")} `;
                 }
             }
         }
