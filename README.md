@@ -8,8 +8,9 @@ Prerequisites:
 - npm  
 - tshark  
 
-Download this repo
-Set this repo as your active directory in your terminal by using  
+Download this repository  
+  
+Set this repository as your active directory in your terminal by using  
 ```bash
 cd rayshark
 ```
